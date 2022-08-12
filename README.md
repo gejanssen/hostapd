@@ -3,12 +3,18 @@
 eerlijk gejat:
 
 https://frillip.com/using-your-raspberry-pi-3-as-a-wifi-access-point-with-hostapd/
+en
+https://www.raspberrypi.com/documentation/computers/configuration.html
+en
+https://learn.adafruit.com/setting-up-a-raspberry-pi-as-a-wifi-access-point/install-software
+
+Laatste setup: 08-2022 Raspberry Pi 4 2G met externe wifi adapter op wlan1
 
 ## Install software
 
 Voor de setup hebben we dnsmas en hostapd nodig.
 ```
-	$ sudo apt-get install dnsmasq hostapd	
+	$ sudo apt-get install dnsmasq hostapd iptables iptables-persistent
 ```
 ## DHCP uitschakelen voor de wlan0
 Tegen de dhcp client zeggen dat hij van de wlan0 af moet blijven.
@@ -42,6 +48,11 @@ En natuurlijk even droog oefenen.
 ```
 
 ## Configure hostapd
+enable hostapd service (autostart bij booten)
+---
+sudo systemctl unmask hostapd
+sudo systemctl enable hostapd
+---
 Nieuwe config voor hostapd
 Hier configureren we de access point.
 
@@ -52,7 +63,7 @@ Hier configureren we de access point.
 	interface=wlan0
 
 	# Use the nl80211 driver with the brcmfmac driver
-	driver=nl80211
+	#driver=nl80211
 
 	# This is the name of the network
 	ssid=rpib3-AP
@@ -93,7 +104,12 @@ Hier configureren we de access point.
 	# Use AES, instead of TKIP
 	rsn_pairwise=CCMP
 ```
+Even tegen Hostapd zeggen dat ie de config file moet gebruiken.
+---
+vi /etc/default/hostapd
 
+DAEMON_CONF="/etc/hostapd/hostapd.conf"
+---
 
 ## Configure dnsmasq
 dnsmasq configudingesen
@@ -131,14 +147,36 @@ En dit willen we natuurlijk permanent maken:
 ## Firewall configureren voor masqurading aan te zetten
 
 ```
-	sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE  
-	sudo iptables -A FORWARD -i eth0 -o wlan0 -m state --state RELATED,ESTABLISHED -j ACCEPT  
-	sudo iptables -A FORWARD -i wlan0 -o eth0 -j ACCEPT
+sudo iptables -t nat -A POSTROUTING -o wlan1 -j MASQUERADE
+sudo iptables -A FORWARD -i wlan1 -o wlan0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+sudo iptables -A FORWARD -i wlan1 -o wlan0 -j ACCEPT
+
+
+# old setup with eth0
+# old	sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE  
+# old	sudo iptables -A FORWARD -i eth0 -o wlan0 -m state --state RELATED,ESTABLISHED -j ACCEPT  
+# old	sudo iptables -A FORWARD -i wlan0 -o eth0 -j ACCEPT
 ```
+Check iptables
+---
+root@rpib4:~# sudo iptables -t nat -S
+-P PREROUTING ACCEPT
+-P INPUT ACCEPT
+-P OUTPUT ACCEPT
+-P POSTROUTING ACCEPT
+-A POSTROUTING -o wlan0 -j MASQUERADE
+root@rpib4:~# sudo iptables -S
+-P INPUT ACCEPT
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+-A FORWARD -i wlan0 -o wlan1 -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A FORWARD -i wlan1 -o eth0 -j ACCEPT
+root@rpib4:~#
+---
 
 Opslaan
 ```
-	iptables-restore < /etc/iptables.ipv4.nat
+sudo sh -c "iptables-save > /etc/iptables/rules.v4"
 ```
 
 
