@@ -258,3 +258,29 @@ vi logging.sh
 tail -f /var/log/daemon.log
 nmtui
 
+
+15-05-2025
+raspap.com
+
+install image
+sudo apt update
+sudo apt full-upgrade
+enable vnc
+
+install raspap
+curl -sL https://install.raspap.com | bash
+install 2nd wifi
+
+sudo raspi-config 
+sudo apt install --reinstall raspberrypi-ui-mods lxsession
+sudo reboot
+
+cd /lib/systemd/system
+
+vi restapi.service
+user=gej
+
+vi /lib/systemd/system/hostapd.service
+vi /etc/hostapd/hostapd.conf 
+
+   
